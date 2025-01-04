@@ -1,4 +1,6 @@
 `include "lib/defines.vh"
+
+
 module mycpu_core(
     input wire clk,
     input wire rst,
@@ -16,19 +18,23 @@ module mycpu_core(
     output wire [31:0] data_sram_wdata,
     input wire [31:0] data_sram_rdata,
 
+
+
     output wire [31:0] debug_wb_pc,
     output wire [3:0] debug_wb_rf_wen,
     output wire [4:0] debug_wb_rf_wnum,
     output wire [31:0] debug_wb_rf_wdata
 );
-    wire [`IF_TO_ID_WD-1:0] if_to_id_bus;
-    wire [`ID_TO_EX_WD-1:0] id_to_ex_bus;
-    wire [`EX_TO_MEM_WD-1:0] ex_to_mem_bus;
-    wire [`MEM_TO_WB_WD-1:0] mem_to_wb_bus;
-    wire [`BR_WD-1:0] br_bus; 
+    wire [`IF_TO_ID_WD-1:0] if_to_id_bus;//IF到ID的通路
+    wire [`ID_TO_EX_WD-1:0] id_to_ex_bus;//ID到EX的通路
+
+    wire [`EX_TO_MEM_WD-1:0] ex_to_mem_bus;//EX到MEM
+    wire [`MEM_TO_WB_WD-1:0] mem_to_wb_bus;//MEM到WB
+
+    wire [`BR_WD-1:0] br_bus; //跳转通路
     wire [`DATA_SRAM_WD-1:0] ex_dt_sram_bus;
     wire [`WB_TO_RF_WD-1:0] wb_to_rf_bus;
-    wire [`StallBus-1:0] stall;
+    wire [`StallBus-1:0] stall;//暂停
 
     IF u_IF(
     	.clk             (clk             ),

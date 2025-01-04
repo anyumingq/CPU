@@ -1,27 +1,27 @@
 `include "lib/defines.vh"
 module mycpu_top(
-    input wire clk,
-    input wire resetn,
-    input wire [5:0] ext_int,
+    input wire clk,//时钟
+    input wire resetn,//重置
+    input wire [5:0] ext_int,//中断
 
-    output wire inst_sram_en,
-    output wire [3:0] inst_sram_wen,
-    output wire [31:0] inst_sram_addr,
-    output wire [31:0] inst_sram_wdata,
-    input wire [31:0] inst_sram_rdata,
+    output wire inst_sram_en,//指令使能
+    output wire [3:0] inst_sram_wen,//指令写使能 一般不用（调试中）
+    output wire [31:0] inst_sram_addr,//指令地址
+    output wire [31:0] inst_sram_wdata,//写入指令的数据
+    input wire [31:0] inst_sram_rdata,//指令读取的数据
 
-    output wire data_sram_en,
-    output wire [3:0] data_sram_wen,
-    output wire [31:0] data_sram_addr,
-    output wire [31:0] data_sram_wdata,
-    input wire [31:0] data_sram_rdata,
+    output wire data_sram_en,//数据使能
+    output wire [3:0] data_sram_wen,//数据写入使能
+    output wire [31:0] data_sram_addr,//数据地址（读或写的地址）
+    output wire [31:0] data_sram_wdata,//写入的数据
+    input wire [31:0] data_sram_rdata,//读取的数据
 
-    output wire [31:0] debug_wb_pc,
-    output wire [3:0] debug_wb_rf_wen,
-    output wire [4:0] debug_wb_rf_wnum,
-    output wire [31:0] debug_wb_rf_wdata 
+    output wire [31:0] debug_wb_pc,//程序计数器
+    output wire [3:0] debug_wb_rf_wen,//回写的使能信号
+    output wire [4:0] debug_wb_rf_wnum,//回写写入的寄存器编号
+    output wire [31:0] debug_wb_rf_wdata //回写写入的数据
 );
-
+    //指令和数据的虚拟地址
     wire [31:0] inst_sram_addr_v, data_sram_addr_v;
 
     mycpu_core u_mycpu_core(
