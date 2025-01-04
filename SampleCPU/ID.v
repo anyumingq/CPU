@@ -1,44 +1,46 @@
 `include "lib/defines.vh"
+
+
 module ID(
     input wire clk,
     input wire rst,
     // input wire flush,
-    input wire [`StallBus-1:0] stall,
+    input wire [`StallBus-1:0] stall,//暂停信号
     
-    output wire stallreq,
+    output wire stallreq,//请求暂停信号
 
-    input wire [`IF_TO_ID_WD-1:0] if_to_id_bus,
+    input wire [`IF_TO_ID_WD-1:0] if_to_id_bus,//IF到ID信息（寄存器是否可用，PC地址）
 
-    input wire [31:0] inst_sram_rdata,
+    input wire [31:0] inst_sram_rdata,//指令存储器读来的指令数据
 
-    input wire [`WB_TO_RF_WD-1:0] wb_to_rf_bus,
+    input wire [`WB_TO_RF_WD-1:0] wb_to_rf_bus,//来自WB阶段的数据
 
-    output wire [`ID_TO_EX_WD-1:0] id_to_ex_bus,
+    output wire [`ID_TO_EX_WD-1:0] id_to_ex_bus,//ID到EX的通路
 
-    output wire [`BR_WD-1:0] br_bus 
+    output wire [`BR_WD-1:0] br_bus //跳转通路
 );
 
-    reg [`IF_TO_ID_WD-1:0] if_to_id_bus_r;
-    wire [31:0] inst;
-    wire [31:0] id_pc;
-    wire ce;
+    reg [`IF_TO_ID_WD-1:0] if_to_id_bus_r;//保存IF传来的信息
+    wire [31:0] inst;//当前指令
+    wire [31:0] id_pc;//当前指令PC地址
+    wire ce;//寄存器使能信号
 
-    wire wb_rf_we;
-    wire [4:0] wb_rf_waddr;
-    wire [31:0] wb_rf_wdata;
+    wire wb_rf_we;//WB传来的写使能
+    wire [4:0] wb_rf_waddr;//写地址
+    wire [31:0] wb_rf_wdata;//写数据
 
     always @ (posedge clk) begin
         if (rst) begin
-            if_to_id_bus_r <= `IF_TO_ID_WD'b0;        
+            if_to_id_bus_r <= `IF_TO_ID_WD'b0; //重置       
         end
         // else if (flush) begin
         //     ic_to_id_bus <= `IC_TO_ID_WD'b0;
         // end
-        else if (stall[1]==`Stop && stall[2]==`NoStop) begin
-            if_to_id_bus_r <= `IF_TO_ID_WD'b0;
+        else if (stall[1]==`Stop && stall[2]==`NoStop) begin//ID停止，但EX不停止
+            if_to_id_bus_r <= `IF_TO_ID_WD'b0;//暂停ID阶段
         end
         else if (stall[1]==`NoStop) begin
-            if_to_id_bus_r <= if_to_id_bus;
+            if_to_id_bus_r <= if_to_id_bus;//不暂停，则把信息传递过来
         end
     end
     
@@ -46,7 +48,8 @@ module ID(
     assign {
         ce,
         id_pc
-    } = if_to_id_bus_r;
+    } = if_to_id_bus_r;//拆分为使能和PC地址
+    
     assign {
         wb_rf_we,
         wb_rf_waddr,

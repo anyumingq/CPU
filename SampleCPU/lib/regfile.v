@@ -6,16 +6,16 @@ module regfile(
     input wire [4:0] raddr2,
     output wire [31:0] rdata2,
     
-    input wire we,
-    input wire [4:0] waddr,
-    input wire [31:0] wdata
+    input wire we,//写使能
+    input wire [4:0] waddr,//地址
+    input wire [31:0] wdata//数据
 );
-    reg [31:0] reg_array [31:0];
+    reg [31:0] reg_array [31:0];  
     // write
     always @ (posedge clk) begin
         if (we && waddr!=5'b0) begin
             reg_array[waddr] <= wdata;
-        end
+        end 
     end
 
     // read out 1
