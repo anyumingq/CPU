@@ -1,5 +1,5 @@
 `include "lib/defines.vh"
-
+// CPU核心，定义流水线
 
 module mycpu_core(
     input wire clk,
@@ -10,13 +10,13 @@ module mycpu_core(
     output wire [3:0] inst_sram_wen,
     output wire [31:0] inst_sram_addr,
     output wire [31:0] inst_sram_wdata,
-    input wire [31:0] inst_sram_rdata,
+    input wire [31:0] inst_sram_rdata,//r指令信息
 
     output wire data_sram_en,
     output wire [3:0] data_sram_wen,
     output wire [31:0] data_sram_addr,
     output wire [31:0] data_sram_wdata,
-    input wire [31:0] data_sram_rdata,
+    input wire [31:0] data_sram_rdata,//r数据信息
 
 
 
@@ -25,16 +25,31 @@ module mycpu_core(
     output wire [4:0] debug_wb_rf_wnum,
     output wire [31:0] debug_wb_rf_wdata
 );
-    wire [`IF_TO_ID_WD-1:0] if_to_id_bus;//IF到ID的通路
-    wire [`ID_TO_EX_WD-1:0] id_to_ex_bus;//ID到EX的通路
-
-    wire [`EX_TO_MEM_WD-1:0] ex_to_mem_bus;//EX到MEM
-    wire [`MEM_TO_WB_WD-1:0] mem_to_wb_bus;//MEM到WB
-
-    wire [`BR_WD-1:0] br_bus; //跳转通路
+    wire [`IF_TO_ID_WD-1:0] if_to_id_bus;
+    wire [`ID_TO_EX_WD-1:0] id_to_ex_bus;
+    //forwording
+    wire [`EX_TO_MEM_WD-1:0] ex_to_mem_bus;
+    wire [`MEM_TO_WB_WD-1:0] mem_to_wb_bus;
+    
+    wire [`EX_TO_RF_WD-1:0] ex_to_rf_bus;
+    wire [`MEM_TO_RF_WD-1:0] mem_to_rf_bus;
+    wire [`BR_WD-1:0] br_bus; 
     wire [`DATA_SRAM_WD-1:0] ex_dt_sram_bus;
     wire [`WB_TO_RF_WD-1:0] wb_to_rf_bus;
-    wire [`StallBus-1:0] stall;//暂停
+    wire [`LoadBus-1:0] id_load_bus;
+    wire [`LoadBus-1:0] ex_load_bus;
+    wire [3:0] data_ram_sel;
+    wire [`SaveBus-1:0] id_save_bus;
+    wire [`StallBus-1:0] stall;
+    wire ex_id;
+
+    wire [71:0] id_hi_lo_bus;
+    wire [65:0] ex_hi_lo_bus;
+
+    // stall
+    wire stallreq_for_ex;
+    wire stallreq_for_load;
+    wire stallreq_for_bru;
 
     IF u_IF(
     	.clk             (clk             ),
@@ -57,8 +72,16 @@ module mycpu_core(
         .if_to_id_bus    (if_to_id_bus    ),
         .inst_sram_rdata (inst_sram_rdata ),
         .wb_to_rf_bus    (wb_to_rf_bus    ),
+        .ex_to_rf_bus    (ex_to_rf_bus    ),
+        .mem_to_rf_bus   (mem_to_rf_bus   ),
         .id_to_ex_bus    (id_to_ex_bus    ),
-        .br_bus          (br_bus          )
+        .ex_id           (ex_id           ),
+        .id_load_bus     (id_load_bus     ),
+        .id_save_bus     (id_save_bus     ),
+        .stallreq_for_bru(stallreq_for_bru),
+        .br_bus          (br_bus          ),
+        .id_hi_lo_bus    (id_hi_lo_bus    ),
+        .ex_hi_lo_bus    (ex_hi_lo_bus    )
     );
 
     EX u_EX(
@@ -66,11 +89,21 @@ module mycpu_core(
         .rst             (rst             ),
         .stall           (stall           ),
         .id_to_ex_bus    (id_to_ex_bus    ),
+        // .ex_to_id_bus    (ex_to_id_bus    ),
+        .ex_id           (ex_id           ),
+        .ex_to_rf_bus    (ex_to_rf_bus    ),
         .ex_to_mem_bus   (ex_to_mem_bus   ),
+        .id_load_bus     (id_load_bus     ),
+        .id_save_bus     (id_save_bus     ),
+        .ex_load_bus     (ex_load_bus     ),
+        .stallreq_for_ex (stallreq_for_ex ),
+        .data_ram_sel    (data_ram_sel    ),
         .data_sram_en    (data_sram_en    ),
         .data_sram_wen   (data_sram_wen   ),
         .data_sram_addr  (data_sram_addr  ),
-        .data_sram_wdata (data_sram_wdata )
+        .data_sram_wdata (data_sram_wdata ),
+        .id_hi_lo_bus    (id_hi_lo_bus    ),
+        .ex_hi_lo_bus    (ex_hi_lo_bus    )
     );
 
     MEM u_MEM(
@@ -78,9 +111,14 @@ module mycpu_core(
         .rst             (rst             ),
         .stall           (stall           ),
         .ex_to_mem_bus   (ex_to_mem_bus   ),
+        .ex_load_bus     (ex_load_bus     ),
         .data_sram_rdata (data_sram_rdata ),
-        .mem_to_wb_bus   (mem_to_wb_bus   )
+        .data_ram_sel    (data_ram_sel    ),
+        .stallreq_for_load(stallreq_for_load),
+        .mem_to_wb_bus   (mem_to_wb_bus   ),
+        .mem_to_rf_bus   (mem_to_rf_bus   )
     );
+    
     
     WB u_WB(
     	.clk               (clk               ),
@@ -96,6 +134,9 @@ module mycpu_core(
 
     CTRL u_CTRL(
     	.rst   (rst   ),
+        .stallreq_for_ex(stallreq_for_ex),
+        .stallreq_for_load(stallreq_for_load),
+        .stallreq_for_bru(stallreq_for_bru),
         .stall (stall )
     );
     
