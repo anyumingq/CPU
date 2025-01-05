@@ -1,1 +1,115 @@
-ä¹˜æ³•å™¨
+`include "lib/defines.vh"
+//////////////////////////////////////////////////////////////////////////////////
+// Company: 
+// Engineer: 
+// 
+// Create Date: 2021/12/13 19:45:12
+// Design Name: 
+// Module Name: mul_self
+// Project Name: 
+// Target Devices: 
+// Tool Versions: 
+// Description: 
+// 
+// Dependencies: 
+// 
+// Revision:
+// Revision 0.01 - File Created
+// Additional Comments:
+// 
+//////////////////////////////////////////////////////////////////////////////////
+
+module mul_self(
+	input wire rst,							//¸´Î»
+	input wire clk,							//Ê±ÖÓ
+	input wire signed_mul_i,				//ÊÇ·ñÎªÓĞ·ûºÅ³Ë·¨ÔËËã£¬1Î»ÓĞ·ûºÅ
+    input wire[31:0] opdata1_i,				//³ËÊı1
+    input wire[31:0] opdata2_i,				//³ËÊı2
+	input wire start_i,						//ÊÇ·ñ¿ªÊ¼³Ë·¨ÔËËã
+	input wire annul_i,						//ÊÇ·ñÈ¡Ïû³Ë·¨ÔËËã£¬1Î»È¡Ïû
+    output reg[63:0] result_o,				//³Ë·¨ÔËËã½á¹û
+	output reg ready_o						//³Ë·¨ÔËËãÊÇ·ñ½áÊø
+);
+//MulFree:00
+//MulByZero:01
+//MulOn:10
+//MulEnd:11
+    reg [63:0] op1;        // ²Ù×÷Êı1£¬64Î»
+    reg [31:0] op2;        // ²Ù×÷Êı2£¬32Î»
+    reg [1:0] state;       // Ä£¿é×´Ì¬£º00 - ³õÊ¼»¯£¬01 - ²Ù×÷ÊıÎª0£¬10 - ³Ë·¨¼ÆËã£¬11 - Íê³É
+    reg [5:0] cnt;         // ¼ÆÊıÆ÷£¬6Î»
+always@(posedge clk) begin
+    if(rst || (!start_i)) begin
+        state <= 2'b00;            // ¸´Î»»òÎ´Æô¶¯Ê±½øÈë³õÊ¼»¯×´Ì¬
+        result_o <= {`ZeroWord, `ZeroWord};  // ÇåÁã³Ë·¨½á¹û
+        ready_o <= 1'b0;           // ÔËËãÎ´Íê³É
+    end else begin
+        case(state)
+            // ³õÊ¼»¯½×¶Î
+            2'b00: begin
+                if(start_i == 1'b1 && annul_i == 1'b0) begin
+                    if((opdata1_i == `ZeroWord) || (opdata2_i == `ZeroWord)) begin
+                        state <= 2'b01;  // Èç¹û²Ù×÷ÊıÎª0£¬½øÈëMulByZero×´Ì¬
+                    end else begin
+                        state <= 2'b10;  // ·ñÔò½øÈë³Ë·¨¼ÆËã×´Ì¬
+                        cnt <= 6'b000000; // ¼ÆÊıÆ÷ÇåÁã
+                        
+                        // ¶Ô²Ù×÷Êı½øĞĞ´¦Àí£ºÓĞ·ûºÅ³Ë·¨ĞèÒª´¦Àí·ûºÅÎ»
+                        if(signed_mul_i == 1'b1 && opdata1_i[31] == 1'b1) begin
+                            op1 <= {`ZeroWord, ~opdata1_i + 1'b1};  // Èç¹ûÊÇ¸ºÊı£¬È¡²¹Âë
+                        end else begin
+                            op1 <= {`ZeroWord, opdata1_i};  // Ö±½Ó¸³Öµ
+                        end
+                        
+                        if(signed_mul_i == 1'b1 && opdata2_i[31] == 1'b1) begin
+                            op2 <= ~opdata2_i + 1'b1;  // Èç¹ûÊÇ¸ºÊı£¬È¡²¹Âë
+                        end else begin
+                            op2 <= opdata2_i;  // Ö±½Ó¸³Öµ
+                        end
+                        
+                        result_o <= {`ZeroWord, `ZeroWord};  // ÇåÁã½á¹û
+                    end
+                end else begin
+                    ready_o <= 1'b0;             // Èç¹ûÃ»ÓĞÆô¶¯£¬Ôò×¼±¸ĞÅºÅÎª0
+                    result_o <= {`ZeroWord, `ZeroWord};  // ½á¹ûÇåÁã
+                end
+            end
+            
+            // ²Ù×÷ÊıÎª0µÄÇé¿ö
+            2'b01: begin
+                result_o <= {`ZeroWord, `ZeroWord};  // ½á¹ûÎª0
+                state <= 2'b11;  // ½øÈëÍê³É×´Ì¬
+            end
+            
+            // ³Ë·¨¼ÆËã½×¶Î
+            2'b10: begin
+                if(cnt != 6'b10_0000) begin  // Èç¹û¼ÆÊıÆ÷Ã»ÓĞµ½×î´óÖµ
+                    if(op2[cnt] == 1'b1) begin
+                        result_o <= result_o + op1;  // Èç¹ûop2µÄµ±Ç°Î»Îª1£¬¼ÓÉÏop1
+                    end
+                    op1 <= op1 << 1;  // ×óÒÆop1£¬×¼±¸³ËÏÂÒ»¸öÎ»
+                    cnt <= cnt + 1'b1;  // ¼ÆÊıÆ÷¼Ó1
+                end else begin
+                    // Èç¹ûÊÇÓĞ·ûºÅ³Ë·¨£¬ÇÒ²Ù×÷Êı·ûºÅ²»Í¬£¬Ôò½á¹ûÈ¡·´²¢¼Ó1£¨²¹Âë£©
+                    if(signed_mul_i == 1'b1 && ((opdata1_i[31] ^ opdata2_i[31]) == 1'b1)) begin
+                        result_o <= ~result_o + 1'b1;  // È¡·´²¢¼Ó1
+                    end
+                    state <= 2'b11;  // ½øÈëÍê³É×´Ì¬
+                    cnt <= 6'b000000;  // ÖØÖÃ¼ÆÊıÆ÷
+                end
+            end
+            
+            // Íê³É½×¶Î³õÊ¼»¯ÉèÖÃ
+            2'b11: begin
+                ready_o <= 1'b1;  // ÔËËãÍê³É£¬×¼±¸ĞÅºÅÖÃ1
+                if(start_i == 1'b0) begin  // Èç¹ûÃ»ÓĞÆô¶¯ĞÅºÅ
+                    state <= 2'b00;  // ·µ»Ø³õÊ¼»¯×´Ì¬
+                    ready_o <= 1'b0;  // ÔËËãÎ´×¼±¸ºÃ
+                    result_o <= {`ZeroWord, `ZeroWord};  // ÇåÁã½á¹û
+                end
+            end
+        endcase
+    end
+end
+
+endmodule
